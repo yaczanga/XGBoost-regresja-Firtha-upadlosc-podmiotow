@@ -254,6 +254,42 @@ ostatniej ukończonej próby. Dołączona baza zawiera komplet 500 prób, a zmie
 w notebooku steruje tym, ile ma ich być łącznie. Test permutacyjny (sekcja 15b) jest opcjonalny
 i również długi.
 
+## Testy
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+29 testów, ok. 2 sekundy. **Nie wymagają danych źródłowych** — działają na małych panelach
+syntetycznych o tej samej strukturze (jeden wiersz = firmo-rok, zmienna liczba lat na firmę,
+część firm ze zdarzeniem, braki we wskaźnikach). Sprawdzana logika nie zależy od rozmiaru próby.
+
+Testy pilnują tych gwarancji metodologicznych, na których opiera się całe badanie:
+
+| Gwarancja | Plik |
+|---|---|
+| Każda obserwacja `target=1` pochodzi z roku przed upadłością (brak wycieku czasowego) | [`test_pre_processing.py`](tests/test_pre_processing.py) |
+| Brak obserwacji od roku zdarzenia wzwyż | jw. |
+| Firma wnosi najwyżej jedną obserwację pozytywną | jw. |
+| Cenzurowanie prawostronne firm bez zdarzenia | jw. |
+| Żadna firma nie trafia do dwóch zbiorów jednocześnie | jw. |
+| Progi winsoryzacji liczone wyłącznie na treningu | jw. |
+| Zmiany rok-do-roku nie przeciekają między firmami | jw. |
+| Żadna firma nie występuje po obu stronach foldu CV | [`test_cross_validation.py`](tests/test_cross_validation.py) |
+| Każda obserwacja dokładnie raz w części walidacyjnej | jw. |
+| Zdarzenia rozłożone równomiernie między foldy (stratyfikacja) | jw. |
+| Odsetek alarmów niezmienniczy względem skali score'ów | [`test_validation.py`](tests/test_validation.py) |
+
+Suita została zweryfikowana testami mutacyjnymi: celowe zepsucie podziału na poziomie firm,
+winsoryzacji, cenzurowania, konstrukcji zmiennej celu oraz zamiana `StratifiedGroupKFold`
+na zwykły `GroupKFold` — każda z tych zmian zapala właściwy test.
+
+Testy uruchamiają się też automatycznie na GitHubie przy każdym `push`, na Pythonie 3.12 i 3.14
+([`.github/workflows/testy.yml`](.github/workflows/testy.yml)). Instalacja w CI korzysta
+z `requirements-dev.txt` — węższego zestawu niż `requirements.txt`, bo testy nie potrzebują
+`shap`, `statsmodels`, `matplotlib` ani `jupyterlab`.
+
 ## Ograniczenia
 
 - **Status rodzinny** ujęto binarnie, zgodnie z klasyfikacją dostępną w Orbis. Miara nie

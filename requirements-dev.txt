@@ -1,0 +1,16 @@
+# Zaleznosci do uruchamiania testow.
+# Instalacja:  pip install -r requirements-dev.txt
+#
+# Celowo NIE jest to requirements.txt + pytest. Testy dotykaja wylacznie
+# pre_processing, cross_validation i validation, wiec nie potrzebuja shap,
+# statsmodels, matplotlib, seaborn ani jupyterlab. Wezszy zestaw to szybsza
+# i mniej awaryjna instalacja w CI.
+
+numpy>=2.4
+pandas>=2.0
+scipy>=1.11          # wymagany przy imporcie xgboost (scipy.sparse)
+scikit-learn>=1.3    # StratifiedGroupKFold, precision_recall_curve
+xgboost>=2.0         # importowane przez validation i cross_validation
+optuna>=3.4          # importowane przez cross_validation
+
+pytest>=8.0
