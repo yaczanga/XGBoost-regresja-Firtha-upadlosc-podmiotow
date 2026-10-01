@@ -92,12 +92,14 @@ Na zbiorze testowym, nieużywanym na żadnym etapie uczenia ani strojenia:
 
 | Miara | Wartość |
 |---|---|
-| **PR-AUC** | **0,034** (bootstrapowy CI klastrowany po firmie: [0,018; 0,062]) |
+| **PR-AUC** (oszacowanie punktowe) | **0,032** |
+| PR-AUC — mediana bootstrapu klastrowanego po firmie | 0,034 [0,018; 0,062] |
 | ROC-AUC | 0,980 |
 | PR-AUC na walidacji (najlepsza z 500 prób) | 0,208 |
 | Precyzja przy czułości 0,90 | 0,004 |
+| Przewaga nad losowym uporządkowaniem | ~121× (prewalencja 0,000265) |
 
-Rozbieżność między PR-AUC 0,034 a ROC-AUC 0,980 to podręcznikowy objaw skrajnego
+Rozbieżność między PR-AUC 0,032 a ROC-AUC 0,980 to podręcznikowy objaw skrajnego
 niezbalansowania klas. Sam ROC-AUC prowadziłby do wniosku o modelu niemal doskonałym.
 W praktyce przy progu wychwytującym 90% upadłości **na każdą trafną wskazówkę przypada około
 250 fałszywych alarmów**. Uporządkowanie generowane przez model jest ok. 120 razy lepsze od
@@ -110,6 +112,10 @@ losowego, ale w kategoriach bezwzględnych nie jest to użyteczne narzędzie prz
 | Wszystkie cechy | 0,034 |
 | Bez cech „martwej” firmy (wielkość, status sprawozdawczy) | 0,042 |
 | Tylko wskaźniki finansowe | 0,019 |
+
+Wartości w tej tabeli pochodzą z osobnych, nieustrojonych modeli o jednakowych
+hiperparametrach (`signal_source_test`), więc nie są wprost porównywalne z PR-AUC 0,032 modelu
+strojonego — porównywalne są wyłącznie między sobą.
 
 Model oparty **wyłącznie na wskaźnikach finansowych wypada najgorzej**, a usunięcie miar
 wielkości i statusu sprawozdawczego trafności nie pogarsza. Potwierdza to analiza wartości
@@ -257,6 +263,31 @@ Zbiór testowy nie uczestniczy w walidacji krzyżowej na żadnym etapie.
 > **Koszt obliczeń.** Każda próba to pięć dopasowań XGBoost zamiast jednego. Studium zapisuje się
 > w osobnej bazie `models/optuna_upadlosci_cv.db`, więc proces można przerwać i wznowić.
 > Domyślne `N_TRIALS_CV = 100` w notebooku jest punktem wyjścia, nie wartością docelową.
+
+### Wynik: pojedynczy podział zawyżał oszacowanie 3,6-krotnie
+
+Przebieg na 100 próbach, 5 foldach, 1 053 915 firmo-latach i 302 zdarzeniach (zbiór uczący
+i walidacyjny połączone; test nietknięty). Foldy wyszły równe — po 60–61 zdarzeń każdy, zero firm
+po obu stronach podziału.
+
+| | Oszacowanie ze strojenia | PR-AUC na teście | Rozjazd |
+|---|---|---|---|
+| Pojedynczy podział | 0,208 (1 zbiór, 46 zdarzeń) | 0,032 | **+0,185** |
+| Walidacja krzyżowa | 0,075 ± 0,024 (5 foldów, 302 zdarzenia) | 0,023 | **+0,052** |
+
+To jest właściwy wniosek z tego rozszerzenia. Walidacja krzyżowa **nie dała lepszego modelu** —
+jego PR-AUC na teście (0,023) jest nawet nieco niższe i mieści się w przedziale ufności modelu
+z pojedynczego podziału [0,013; 0,047], więc różnicy przy 70 zdarzeniach testowych nie można
+rozstrzygnąć. Dała natomiast **uczciwe oszacowanie przed zobaczeniem testu**: optymizm spadł
+z +0,185 do +0,052, czyli 3,6-krotnie.
+
+Potwierdza to hipotezę z rozdz. 3.6.4 pracy: wartość 0,208 nie była miarą jakości modelu, lecz
+w znacznej części efektem wyboru najlepszego z 500 zestawów na 46 zdarzeniach. PR-AUC na foldach
+rozrzuciło się w zakresie 0,047–0,113, co pokazuje, jak niestabilna jest ta miara przy
+kilkudziesięciu zdarzeniach — a tyle właśnie miał pojedynczy zbiór walidacyjny.
+
+Przeniesienie progu przez odsetek alarmów zadziałało: wymagane 6,16% oznaczonych firmo-lat dało
+na teście czułość 0,944 przy zadanych 0,90.
 
 ## Dane osobowe
 
