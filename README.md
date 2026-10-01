@@ -196,7 +196,7 @@ uruchomieniu notebooka (`viz.set_figures_dir(...)` w komórce 1).
 | [05 krzywa uczenia](reports/figures/05_krzywa_uczenia.png) | przebieg `aucpr` na treningu i walidacji |
 | [06 macierz pomyłek — CV](reports/figures/06_macierz_pomylek_walidacja_krzyzowa.png) | model z walidacji krzyżowej |
 | [07 krzywa PR — CV](reports/figures/07_krzywa_precision_recall_walidacja_krzyzowa.png) | model z walidacji krzyżowej |
-| [08 rozkład score ryzyka](reports/figures/08_rozklad_ryzyka_rodzinne_vs_nierodzinne.png) | rodzinne vs nierodzinne, zbiór testowy |
+| [08 rozkład oceny ryzyka](reports/figures/08_rozklad_ryzyka_rodzinne_vs_nierodzinne.png) | rodzinne vs nierodzinne, zbiór testowy |
 | [10 SHAP — średni wpływ](reports/figures/10_shap_sredni_wplyw_cech.png) | ranking top 20 cech |
 | [12 SHAP — waterfall](reports/figures/12_shap_waterfall_pojedyncza_firma.png) | dekompozycja predykcji dla jednej firmy |
 
@@ -276,10 +276,10 @@ Testy pilnują tych gwarancji metodologicznych, na których opiera się całe ba
 | Żadna firma nie trafia do dwóch zbiorów jednocześnie | jw. |
 | Progi winsoryzacji liczone wyłącznie na treningu | jw. |
 | Zmiany rok-do-roku nie przeciekają między firmami | jw. |
-| Żadna firma nie występuje po obu stronach foldu CV | [`test_cross_validation.py`](tests/test_cross_validation.py) |
+| Żadna firma nie występuje po obu stronach podziału w walidacji krzyżowej | [`test_cross_validation.py`](tests/test_cross_validation.py) |
 | Każda obserwacja dokładnie raz w części walidacyjnej | jw. |
-| Zdarzenia rozłożone równomiernie między foldy (stratyfikacja) | jw. |
-| Odsetek alarmów niezmienniczy względem skali score'ów | [`test_validation.py`](tests/test_validation.py) |
+| Zdarzenia rozłożone równomiernie między podzbiory (stratyfikacja) | jw. |
+| Odsetek alarmów niezmienniczy względem skali wartości zwracanych przez model | [`test_validation.py`](tests/test_validation.py) |
 
 Suita została zweryfikowana testami mutacyjnymi: celowe zepsucie podziału na poziomie firm,
 winsoryzacji, cenzurowania, konstrukcji zmiennej celu oraz zamiana `StratifiedGroupKFold`
@@ -304,75 +304,94 @@ z `requirements-dev.txt` — węższego zestawu niż `requirements.txt`, bo test
   odmienny kanał wyjścia z rynku, a nie samo ryzyko niewypłacalności.
 - **Sprawozdanie za rok poprzedzający** zdarzenie bywa publikowane już po ogłoszeniu upadłości,
   więc predykcja nie odpowiada w pełni decyzji możliwej do podjęcia z rocznym wyprzedzeniem.
-- **Zwracany score nie jest skalibrowanym prawdopodobieństwem** — uniemożliwia to ważenie klasy.
-  Służy porządkowaniu firm według ryzyka.
+- **Wartość zwracana przez model nie jest skalibrowanym prawdopodobieństwem** — uniemożliwia
+  to ważenie klasy.
+  Służy porządkowaniu podmiotów według ryzyka.
 - **Model M3** (z efektami stałymi sektora i roku) jest numerycznie niestabilny i nie stanowi
   podstawy wnioskowania.
 
-## Walidacja krzyżowa z podziałem na poziomie firm
+## Walidacja krzyżowa z podziałem na poziomie podmiotów
 
-Rozszerzenie wykraczające poza wersję pracy, zaimplementowane
-w [`src/cross_validation.py`](src/cross_validation.py) i w sekcji 9b notebooka.
+Rozszerzenie wykraczające poza zakres pracy, zaimplementowane
+w [`src/cross_validation.py`](src/cross_validation.py) oraz w sekcji 9b notebooka.
 
-W podstawowym przebiegu jeden zbiór walidacyjny pełni trzy funkcje naraz — wczesne zatrzymanie,
-wybór hiperparametrów i dobór progu decyzyjnego — przy zaledwie 46 zdarzeniach. Wybór najlepszego
-z 500 zestawów częściowo dopasowuje się do przypadkowych właściwości tego zbioru, co widać po
-rozjeździe PR-AUC: **0,208 na walidacji wobec 0,032 na teście**.
+W podstawowym przebiegu jeden zbiór walidacyjny pełni trzy funkcje jednocześnie: służy wczesnemu
+zatrzymaniu, wyborowi hiperparametrów oraz doborowi progu decyzyjnego. Przy czterdziestu sześciu
+zdarzeniach pozytywnych wybór najlepszego z pięciuset zestawów częściowo odzwierciedla
+przypadkowe właściwości tego zbioru. Widać to po różnicy między wartością osiągniętą na walidacji
+(0,208) a wynikiem testowym (0,032).
 
-Praca identyfikuje walidację krzyżową jako właściwe rozwiązanie tego problemu i uzasadnia, czemu
-z niej zrezygnowano: stabilniejsze oszacowanie kosztem wielokrotnie dłuższego czasu obliczeń
-(rozdz. 3.6.4). To rozszerzenie domyka tę lukę i **mierzy, ile faktycznie wynosił optymizm**.
+Praca wskazuje walidację krzyżową jako rozwiązanie tego problemu i uzasadnia rezygnację z niej
+czasem obliczeń (rozdz. 3.6.4). Celem rozszerzenia jest oszacowanie, jaka część różnicy między
+wynikiem walidacyjnym a testowym wynika z samej procedury wyboru hiperparametrów.
 
-Implementacja respektuje dwa wymogi tych danych:
+### Konstrukcja
 
-- **podział na poziomie firm** (grupa = `TIN`), bo różne lata tej samej spółki są skorelowane;
-- **stratyfikacja po zmiennej celu**, bo przy jednym zdarzeniu na 3 541 firmo-lat zwykły
-  `GroupKFold` generuje foldy o skrajnie różnej liczbie zdarzeń, przez co średnia z foldów traci
-  sens. Oba warunki spełnia `StratifiedGroupKFold`.
+Zbiór uczący i walidacyjny połączono, a następnie podzielono na pięć rozłącznych podzbiorów.
+W każdej iteracji cztery z nich służą uczeniu, a piąty ocenie. Podział wyznaczono jednokrotnie
+i zastosowano w każdej próbie, dzięki czemu różnice między zestawami hiperparametrów nie są
+zakłócone zmiennością samego podziału. Zbiór testowy nie uczestniczy w tej procedurze na żadnym
+etapie.
 
-Dodatkowo `scale_pos_weight` liczony jest osobno dla każdego foldu, z jego własnej części uczącej
-— inaczej do wagi klasy przeciekałaby informacja o rozkładzie zdarzeń w części walidacyjnej.
-Strojenie korzysta z prunera medianowego, który przerywa próby odstające in minus po pierwszych
-foldach; bez tego koszt byłby pięciokrotnie wyższy niż przy pojedynczym podziale. Model końcowy
-douczany jest na całym zbiorze uczącym z liczbą drzew równą medianie z foldów.
+Podziału dokonano na poziomie podmiotów (`TIN`), ponieważ obserwacje tej samej spółki są
+skorelowane w czasie. Zastosowano ponadto stratyfikację względem zmiennej zależnej: przy jednym
+zdarzeniu na 3 541 firmo-lat podział bez stratyfikacji daje podzbiory o znacznie różniącej się
+liczbie zdarzeń, przez co średnia z iteracji przestaje być miarodajna. Oba warunki spełnia
+`StratifiedGroupKFold`.
 
-**Przenoszenie progu decyzyjnego.** Predykcje out-of-fold pochodzą z pięciu różnych modeli,
-z których każdy ma własną skalę score'ów. Próg w wartościach bezwzględnych nie przenosi się więc
-wiernie na model końcowy, a PR-AUC liczone na połączonych predykcjach OOF wychodzi niżej niż
-średnia z foldów — i nie jest to błąd. Zamiast progu przenoszony jest **odsetek alarmów**
-potrzebny do osiągnięcia zadanej czułości; wielkość ta jest niezmiennicza względem monotonicznego
-przeskalowania score'ów (`alarm_rate_from_oof` → `threshold_from_alarm_rate`).
+Wagę klasy mniejszościowej wyznaczono osobno w każdej iteracji, na podstawie jej własnej części
+uczącej. Obliczenie jej na całości wprowadzałoby do procedury informację o rozkładzie zdarzeń
+w części służącej ocenie.
 
-Zbiór testowy nie uczestniczy w walidacji krzyżowej na żadnym etapie.
+Funkcją celu jest średnia z pięciu wartości PR-AUC. Zastosowano przerywanie prób odstających na
+podstawie mediany dotychczasowych wyników, co ogranicza nakład obliczeniowy. Model końcowy
+douczono na połączonym zbiorze uczącym i walidacyjnym. Ponieważ nie pozostaje wówczas próba
+służąca wczesnemu zatrzymaniu, liczbę drzew przyjęto jako medianę z pięciu iteracji.
 
-> **Koszt obliczeń.** Każda próba to pięć dopasowań XGBoost zamiast jednego. Studium zapisuje się
-> w osobnej bazie `models/optuna_upadlosci_cv.db`, więc proces można przerwać i wznowić.
-> Domyślne `N_TRIALS_CV = 100` w notebooku jest punktem wyjścia, nie wartością docelową.
+### Dobór progu decyzyjnego
 
-### Wynik: pojedynczy podział zawyżał oszacowanie 3,6-krotnie
+Predykcje uzyskane dla obserwacji w tych iteracjach, w których nie uczestniczyły one w uczeniu,
+pochodzą z pięciu odrębnych modeli. Każdy z nich zwraca wartości we własnej skali, wobec czego
+próg wyrażony bezwzględnie nie przenosi się wiernie na model końcowy. Z tego samego powodu
+PR-AUC policzone na połączonych predykcjach przyjmuje wartość niższą niż średnia z iteracji.
 
-Przebieg na 100 próbach, 5 foldach, 1 053 915 firmo-latach i 302 zdarzeniach (zbiór uczący
-i walidacyjny połączone; test nietknięty). Foldy wyszły równe — po 60–61 zdarzeń każdy, zero firm
-po obu stronach podziału.
+Zamiast progu przenoszony jest odsetek obserwacji oznaczonych jako zagrożone, konieczny do
+osiągnięcia zadanej czułości. Wielkość ta nie zmienia się przy monotonicznym przeskalowaniu
+wartości zwracanych przez model (`alarm_rate_from_oof` → `threshold_from_alarm_rate`).
 
-| | Oszacowanie ze strojenia | PR-AUC na teście | Rozjazd |
+### Wyniki
+
+Przebieg objął sto prób i pięć podzbiorów, wyznaczonych na 1 053 915 firmo-latach zawierających
+302 zdarzenia. Liczba zdarzeń w podzbiorach wyniosła od sześćdziesięciu do sześćdziesięciu jeden,
+a żaden podmiot nie wystąpił jednocześnie po obu stronach podziału.
+
+| Procedura | Oszacowanie ze strojenia | PR-AUC (test) | Różnica |
 |---|---|---|---|
-| Pojedynczy podział | 0,208 (1 zbiór, 46 zdarzeń) | 0,032 | **+0,185** |
-| Walidacja krzyżowa | 0,075 ± 0,024 (5 foldów, 302 zdarzenia) | 0,023 | **+0,052** |
+| Pojedynczy podział | 0,208 (jeden zbiór, 46 zdarzeń) | 0,032 | 0,185 |
+| Walidacja krzyżowa | 0,075 ± 0,024 (5 iteracji, 302 zdarzenia) | 0,023 | 0,052 |
 
-To jest właściwy wniosek z tego rozszerzenia. Walidacja krzyżowa **nie dała lepszego modelu** —
-jego PR-AUC na teście (0,023) jest nawet nieco niższe i mieści się w przedziale ufności modelu
-z pojedynczego podziału [0,013; 0,047], więc różnicy przy 70 zdarzeniach testowych nie można
-rozstrzygnąć. Dała natomiast **uczciwe oszacowanie przed zobaczeniem testu**: optymizm spadł
-z +0,185 do +0,052, czyli 3,6-krotnie.
+Model uzyskany w walidacji krzyżowej nie osiąga wyższej trafności testowej. Jego PR-AUC wynosi
+0,023 wobec 0,032 dla modelu z pojedynczego podziału i mieści się w przedziale ufności tego
+drugiego [0,013; 0,047], co przy siedemdziesięciu zdarzeniach w zbiorze testowym nie pozwala
+rozstrzygnąć różnicy między nimi. Zmianie uległo natomiast oszacowanie formułowane przed oceną
+na zbiorze testowym: jego odchylenie od wyniku testowego zmalało z 0,185 do 0,052.
 
-Potwierdza to hipotezę z rozdz. 3.6.4 pracy: wartość 0,208 nie była miarą jakości modelu, lecz
-w znacznej części efektem wyboru najlepszego z 500 zestawów na 46 zdarzeniach. PR-AUC na foldach
-rozrzuciło się w zakresie 0,047–0,113, co pokazuje, jak niestabilna jest ta miara przy
-kilkudziesięciu zdarzeniach — a tyle właśnie miał pojedynczy zbiór walidacyjny.
+Wynik odpowiada przypuszczeniu sformułowanemu w rozdz. 3.6.4. Wartość 0,208 nie odzwierciedlała
+trafności modelu, lecz w znacznej części wybór najlepszego z pięciuset zestawów na czterdziestu
+sześciu zdarzeniach. PR-AUC w poszczególnych iteracjach mieściło się w przedziale od 0,047 do
+0,113, co wskazuje na niestabilność tej miary przy kilkudziesięciu zdarzeniach — a tyle liczył
+pojedynczy zbiór walidacyjny.
 
-Przeniesienie progu przez odsetek alarmów zadziałało: wymagane 6,16% oznaczonych firmo-lat dało
-na teście czułość 0,944 przy zadanych 0,90.
+Przeniesienie progu przez odsetek oznaczonych obserwacji dało na zbiorze testowym czułość 0,944
+przy wartości zadanej 0,90; wymagany odsetek wyniósł 6,16%.
+
+### Nakład obliczeniowy
+
+Każda próba wymaga pięciu dopasowań modelu zamiast jednego. Przebieg na stu próbach objął 484
+dopasowania wobec 501 w strojeniu bez walidacji krzyżowej, a zatem koszt obu procedur jest
+zbliżony. Różni je rozkład tego nakładu: pięćset konfiguracji ocenionych jednokrotnie wobec stu
+ocenionych pięciokrotnie. Wyniki prób zapisywane są w bazie `models/optuna_upadlosci_cv.db`,
+co pozwala przerwać i wznowić obliczenia.
 
 ## Dane osobowe
 
