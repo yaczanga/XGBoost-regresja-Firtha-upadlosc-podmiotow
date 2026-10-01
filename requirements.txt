@@ -1,0 +1,26 @@
+# Zaleznosci projektu. Testowane na Pythonie 3.14.5.
+# Instalacja:  pip install -r requirements.txt
+
+# --- Dane i obliczenia ---
+numpy>=2.4            # operacje macierzowe, generator liczb losowych
+pandas>=2.0           # read_stata (.dta), panel firmo-lat
+scipy>=1.11           # stats.chi2, brentq (profilowy PL CI w regresji Firtha)
+
+# --- Model predykcyjny i strojenie ---
+xgboost>=2.0          # XGBClassifier, tree_method='hist', early_stopping_rounds
+optuna>=3.4           # optymalizacja bayesowska (TPE), storage SQLite
+scikit-learn>=1.3     # metryki (PR-AUC, ROC-AUC), precision_recall_curve
+
+# --- Inferencja i interpretacja ---
+statsmodels>=0.14     # hierarchiczny logit hazardu M1-M3 (SE klastrowane po firmie)
+shap>=0.44            # wartosci SHAP (TreeExplainer)
+# Uwaga: regresja Firtha i test permutacyjny sa zaimplementowane w
+# src/inference.py, bez zaleznosci zewnetrznych.
+
+# --- Wizualizacja ---
+matplotlib>=3.7
+seaborn>=0.13         # hue=, log_scale, bar_label
+
+# --- Srodowisko notebooka ---
+jupyterlab>=4.0
+ipykernel>=6.25
