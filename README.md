@@ -105,6 +105,14 @@ W praktyce przy progu wychwytującym 90% upadłości **na każdą trafną wskaz�
 250 fałszywych alarmów**. Uporządkowanie generowane przez model jest ok. 120 razy lepsze od
 losowego, ale w kategoriach bezwzględnych nie jest to użyteczne narzędzie przesiewowe.
 
+![Krzywa precision-recall](reports/figures/04_krzywa_precision_recall.png)
+
+Precyzja załamuje się już przy bardzo niskich poziomach czułości — to właśnie ten kształt
+ukrywa ROC-AUC równe 0,980. Skalę asymetrii widać w macierzy pomyłek: 63 trafione upadłości
+okupione 15 500 fałszywymi alarmami.
+
+![Macierz pomyłek](reports/figures/03_macierz_pomylek.png)
+
 **Test źródła sygnału** rozstrzyga, skąd bierze się ta resztkowa moc predykcyjna:
 
 | Zestaw cech | PR-AUC |
@@ -119,10 +127,22 @@ strojonego — porównywalne są wyłącznie między sobą.
 
 Model oparty **wyłącznie na wskaźnikach finansowych wypada najgorzej**, a usunięcie miar
 wielkości i statusu sprawozdawczego trafności nie pogarsza. Potwierdza to analiza wartości
-Shapleya: ranking wpływu jest zdominowany przez cechy strukturalne, a najwyższe ryzyko model
-przypisuje podmiotom o zerowych aktywach i niekompletnej sprawozdawczości — nie firmom
-o pogarszającej się rentowności czy płynności. Model rozpoznaje „martwe” firmy, a nie narastające
-trudności finansowe (H1).
+Shapleya.
+
+![Rozkład wpływu cech na ryzyko (SHAP, beeswarm)](reports/figures/11_shap_rozklad_wplywu.png)
+
+Dominującą cechą jest `SHAREHOLDERS` — liczba udziałowców. Kluczowy jest jednak nie jej poziom,
+lecz sama **dostępność**: punkty szare (wartość brakująca) leżą po prawej stronie, podnosząc
+ryzyko, a punkty kolorowe (wartość obecna) tworzą zwarty blok daleko po lewej, obniżając je
+o rząd wielkości silniej niż jakikolwiek wskaźnik finansowy. Identyczny wzorzec ma druga cecha
+w rankingu, `n_corp_group`.
+
+Model nauczył się więc przede wszystkim tego, że **spółka z uzupełnionymi danymi właścicielskimi
+nie upada** — co jest prawdą w tym zbiorze w sensie dosłownym: wszystkie 372 zdarzenia pochodzą
+z podpróby o brakującej informacji własnościowej (zob. rozdz. 3.3 pracy). To informacja
+administracyjna, nie ekonomiczna: pozwala rozpoznać, czy podmiot jest aktywnie raportowany,
+ale nic nie mówi o jego kondycji. Klasyczne wskaźniki płynności, zadłużenia i rentowności
+(`X1`, `X14`, `profitmargin`) plasują się nisko. To właśnie treść hipotezy H1.
 
 Wszystkie trzy warianty mieszczą się w przedziale ufności wariantu pełnego, więc przy
 siedemdziesięciu zdarzeniach w zbiorze testowym różnic między nimi nie należy nadinterpretować.
@@ -135,7 +155,15 @@ siedemdziesięciu zdarzeniach w zbiorze testowym różnic między nimi nie nale�
 | Rodzinne | 0,0032% | 10 | 312 065 |
 
 Gdyby spółki rodzinne upadały w tempie nierodzinnych, należałoby oczekiwać około 110 upadłości
-zamiast 10. Różnica nie znika po kontrolach:
+zamiast 10. Przewaga utrzymuje się w każdym kwartylu wielkości, więc nie jest artefaktem tego,
+że firmy rodzinne są w tej próbie większe:
+
+![Stopa upadłości wg wielkości i typu firmy](reports/figures/09_stopa_upadlosci_wg_wielkosci_i_typu.png)
+
+W kwartylu najmniejszych firm jest to 0,064% wobec 0,007%, w największych 0,021% wobec 0,003%,
+a w drugim kwartylu wśród spółek rodzinnych nie odnotowano ani jednej upadłości.
+
+Różnica nie znika też po kontrolach w modelu:
 
 | Model | Współczynnik `family` | Błąd std. | Iloraz szans |
 |---|---|---|---|
@@ -156,6 +184,22 @@ szanse upadłości — a logarytm aktywów po jej uwzględnieniu przestaje być 
 z częścią predykcyjną. Efekt statusu rodzinnego pozostaje silny i stabilny nawet obok tych
 dominujących kontroli (H2).
 
+### Pozostałe wykresy
+
+Komplet znajduje się w [`reports/figures/`](reports/figures/) i odtwarza się przy każdym
+uruchomieniu notebooka (`viz.set_figures_dir(...)` w komórce 1).
+
+| Wykres | Co pokazuje |
+|---|---|
+| [01 rozkład zmiennej celu](reports/figures/01_rozklad_zmiennej_celu.png) | skala niezbalansowania (oś logarytmiczna) |
+| [02 macierz korelacji](reports/figures/02_macierz_korelacji_wskaznikow.png) | współliniowość 17 wskaźników finansowych |
+| [05 krzywa uczenia](reports/figures/05_krzywa_uczenia.png) | przebieg `aucpr` na treningu i walidacji |
+| [06 macierz pomyłek — CV](reports/figures/06_macierz_pomylek_walidacja_krzyzowa.png) | model z walidacji krzyżowej |
+| [07 krzywa PR — CV](reports/figures/07_krzywa_precision_recall_walidacja_krzyzowa.png) | model z walidacji krzyżowej |
+| [08 rozkład score ryzyka](reports/figures/08_rozklad_ryzyka_rodzinne_vs_nierodzinne.png) | rodzinne vs nierodzinne, zbiór testowy |
+| [10 SHAP — średni wpływ](reports/figures/10_shap_sredni_wplyw_cech.png) | ranking top 20 cech |
+| [12 SHAP — waterfall](reports/figures/12_shap_waterfall_pojedyncza_firma.png) | dekompozycja predykcji dla jednej firmy |
+
 ## Struktura projektu
 
 ```
@@ -175,7 +219,9 @@ magisterka/
 ├── models/
 │   ├── xgboost_upadlosci.json  wytrenowany model
 │   └── optuna_upadlosci.db     baza 500 prób strojenia (wznawialna)
-├── reports/                    listy firm zagrożonych (poza repozytorium — NIP i nazwy)
+├── reports/
+│   ├── figures/                12 wykresów PNG, odtwarzane przy każdym przebiegu
+│   └── *.csv                   listy firm zagrożonych (poza repozytorium — NIP i nazwy)
 ├── requirements.txt
 └── .env.example
 ```

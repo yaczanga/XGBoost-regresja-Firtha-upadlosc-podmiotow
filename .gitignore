@@ -31,10 +31,13 @@ data/raw/*
 
 # ---------------------------------------------------------------
 # Wyniki zawierajace dane identyfikujace przedsiebiorstwa
-# (NIP + nazwa firmy + ocena ryzyka upadlosci)
+# (NIP + nazwa firmy + ocena ryzyka upadlosci).
+# Wyjatek: reports/figures/ to wykresy zagregowane, bez danych
+# pojedynczych podmiotow - trafiaja do repozytorium.
 # ---------------------------------------------------------------
 reports/*
 !reports/.gitkeep
+!reports/figures/
 
 # ---------------------------------------------------------------
 # Literatura - cudze artykuly naukowe, prawa autorskie wydawcow
