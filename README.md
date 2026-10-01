@@ -317,8 +317,11 @@ w [`src/cross_validation.py`](src/cross_validation.py) i w sekcji 9b notebooka.
 W podstawowym przebiegu jeden zbiór walidacyjny pełni trzy funkcje naraz — wczesne zatrzymanie,
 wybór hiperparametrów i dobór progu decyzyjnego — przy zaledwie 46 zdarzeniach. Wybór najlepszego
 z 500 zestawów częściowo dopasowuje się do przypadkowych właściwości tego zbioru, co widać po
-rozjeździe PR-AUC: **0,208 na walidacji wobec 0,034 na teście**. Praca wskazuje walidację krzyżową
-jako właściwą alternatywę (rozdz. 3.6.4), ale nie została ona w niej przeprowadzona.
+rozjeździe PR-AUC: **0,208 na walidacji wobec 0,032 na teście**.
+
+Praca identyfikuje walidację krzyżową jako właściwe rozwiązanie tego problemu i uzasadnia, czemu
+z niej zrezygnowano: stabilniejsze oszacowanie kosztem wielokrotnie dłuższego czasu obliczeń
+(rozdz. 3.6.4). To rozszerzenie domyka tę lukę i **mierzy, ile faktycznie wynosił optymizm**.
 
 Implementacja respektuje dwa wymogi tych danych:
 
