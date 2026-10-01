@@ -10,15 +10,61 @@ from sklearn.metrics import (average_precision_score, precision_recall_curve,
                              roc_auc_score)
 
 
+def threshold_from_scores(y: np.ndarray, scores: np.ndarray,
+                          target_recall: float) -> float:
+    """Najwyzszy prog dajacy recall >= target_recall (0.5 gdy taki nie istnieje)."""
+    prec, rec, thr = precision_recall_curve(y, scores)
+    mask = rec[:-1] >= target_recall              # rec/prec maja dlugosc L, thr -> L-1
+    return float(thr[mask][-1]) if mask.any() else 0.5
+
+
 def find_threshold(model: "xgb.XGBClassifier", X_val: np.ndarray, y_val: np.ndarray,
                    target_recall: float) -> float:
     """Najwyzszy prog na WALIDACJI dajacy recall >= target_recall (0.5 gdy brak)."""
-    val_prob = model.predict_proba(X_val)[:, 1]
-    prec_v, rec_v, thr_v = precision_recall_curve(y_val, val_prob)
-    mask = rec_v[:-1] >= target_recall            # rec/prec maja dlugosc L, thr -> L-1
-    threshold = thr_v[mask][-1] if mask.any() else 0.5
+    threshold = threshold_from_scores(y_val, model.predict_proba(X_val)[:, 1],
+                                      target_recall)
     print(f"Prog z walidacji dla recall>={target_recall:.0%}: {threshold:.4f}")
-    return float(threshold)
+    return threshold
+
+
+def find_threshold_oof(y: np.ndarray, oof_scores: np.ndarray,
+                       target_recall: float) -> float:
+    """Prog dobrany na predykcjach out-of-fold z walidacji krzyzowej.
+
+    Przewaga nad find_threshold: prog wyznaczany jest na WSZYSTKICH zdarzeniach
+    zbioru uczacego, a nie na kilkudziesieciu z pojedynczego zbioru
+    walidacyjnego, przez co jest znacznie stabilniejszy.
+
+    UWAGA: predykcje out-of-fold pochodza z roznych modeli, a kazdy z nich ma
+    wlasna skale score'ow (inna liczba drzew, inne scale_pos_weight). Prog w
+    wartosciach bezwzglednych nie przenosi sie wiec wiernie na model koncowy.
+    Do przeniesienia progu sluzy para alarm_rate_from_oof /
+    threshold_from_alarm_rate, odporna na roznice skali.
+    """
+    threshold = threshold_from_scores(y, oof_scores, target_recall)
+    print(f"Prog z predykcji out-of-fold dla recall>={target_recall:.0%}: "
+          f"{threshold:.4f}  (na {int(y.sum())} zdarzeniach)")
+    return threshold
+
+
+def alarm_rate_from_oof(y: np.ndarray, oof_scores: np.ndarray,
+                        target_recall: float) -> float:
+    """Jaki odsetek firmo-lat trzeba oznaczyc alarmem, by zlapac target_recall zdarzen.
+
+    Wielkosc ta jest niezmiennicza wzgledem monotonicznego przeskalowania
+    score'ow, wiec przenosi sie miedzy modelami o roznej kalibracji - inaczej
+    niz prog w wartosciach bezwzglednych.
+    """
+    thr = threshold_from_scores(y, oof_scores, target_recall)
+    rate = float((oof_scores > thr).mean())
+    print(f"Odsetek alarmow potrzebny dla recall>={target_recall:.0%}: "
+          f"{rate:.4%}  (na {int(y.sum())} zdarzeniach out-of-fold)")
+    return rate
+
+
+def threshold_from_alarm_rate(scores: np.ndarray, alarm_rate: float) -> float:
+    """Prog odpowiadajacy zadanemu odsetkowi alarmow w rozkladzie score'ow modelu."""
+    return float(np.quantile(scores, 1.0 - alarm_rate))
 
 
 def bootstrap_ci(y_test: np.ndarray, y_pred: np.ndarray, threshold: float,

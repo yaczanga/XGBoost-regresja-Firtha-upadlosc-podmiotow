@@ -161,7 +161,8 @@ magisterka/
 ├── src/
 │   ├── data_load.py            wczytanie panelu z pliku .dta
 │   ├── pre_processing.py       target hazardu, czyszczenie, cechy, podział, winsoryzacja
-│   ├── model.py                XGBoost + strojenie Optuną
+│   ├── model.py                XGBoost + strojenie Optuną (pojedynczy podział)
+│   ├── cross_validation.py     walidacja krzyżowa z podziałem na poziomie firm
 │   ├── validation.py           próg decyzyjny, bootstrap klastrowany, test źródła sygnału
 │   ├── inference.py            Firth, logit hazardu, test permutacyjny, sekcje NACE
 │   └── visualisation.py        wykresy EDA i oceny modelu
@@ -220,13 +221,42 @@ i również długi.
 - **Model M3** (z efektami stałymi sektora i roku) jest numerycznie niestabilny i nie stanowi
   podstawy wnioskowania.
 
-## Planowane rozszerzenia
+## Walidacja krzyżowa z podziałem na poziomie firm
 
-**Walidacja krzyżowa z podziałem na poziomie firm.** Zbiór walidacyjny pełni obecnie trzy funkcje
-naraz — wczesne zatrzymanie, wybór hiperparametrów i dobór progu decyzyjnego — przy zaledwie
-46 zdarzeniach. Wybór najlepszego z 500 zestawów częściowo dopasowuje się do przypadkowych
-właściwości tego zbioru, co widać po rozjeździe PR-AUC: 0,208 na walidacji wobec 0,034 na teście.
-Walidacja krzyżowa dałaby stabilniejsze oszacowanie kosztem wielokrotnie dłuższego czasu obliczeń.
+Rozszerzenie wykraczające poza wersję pracy, zaimplementowane
+w [`src/cross_validation.py`](src/cross_validation.py) i w sekcji 9b notebooka.
+
+W podstawowym przebiegu jeden zbiór walidacyjny pełni trzy funkcje naraz — wczesne zatrzymanie,
+wybór hiperparametrów i dobór progu decyzyjnego — przy zaledwie 46 zdarzeniach. Wybór najlepszego
+z 500 zestawów częściowo dopasowuje się do przypadkowych właściwości tego zbioru, co widać po
+rozjeździe PR-AUC: **0,208 na walidacji wobec 0,034 na teście**. Praca wskazuje walidację krzyżową
+jako właściwą alternatywę (rozdz. 3.6.4), ale nie została ona w niej przeprowadzona.
+
+Implementacja respektuje dwa wymogi tych danych:
+
+- **podział na poziomie firm** (grupa = `TIN`), bo różne lata tej samej spółki są skorelowane;
+- **stratyfikacja po zmiennej celu**, bo przy jednym zdarzeniu na 3 541 firmo-lat zwykły
+  `GroupKFold` generuje foldy o skrajnie różnej liczbie zdarzeń, przez co średnia z foldów traci
+  sens. Oba warunki spełnia `StratifiedGroupKFold`.
+
+Dodatkowo `scale_pos_weight` liczony jest osobno dla każdego foldu, z jego własnej części uczącej
+— inaczej do wagi klasy przeciekałaby informacja o rozkładzie zdarzeń w części walidacyjnej.
+Strojenie korzysta z prunera medianowego, który przerywa próby odstające in minus po pierwszych
+foldach; bez tego koszt byłby pięciokrotnie wyższy niż przy pojedynczym podziale. Model końcowy
+douczany jest na całym zbiorze uczącym z liczbą drzew równą medianie z foldów.
+
+**Przenoszenie progu decyzyjnego.** Predykcje out-of-fold pochodzą z pięciu różnych modeli,
+z których każdy ma własną skalę score'ów. Próg w wartościach bezwzględnych nie przenosi się więc
+wiernie na model końcowy, a PR-AUC liczone na połączonych predykcjach OOF wychodzi niżej niż
+średnia z foldów — i nie jest to błąd. Zamiast progu przenoszony jest **odsetek alarmów**
+potrzebny do osiągnięcia zadanej czułości; wielkość ta jest niezmiennicza względem monotonicznego
+przeskalowania score'ów (`alarm_rate_from_oof` → `threshold_from_alarm_rate`).
+
+Zbiór testowy nie uczestniczy w walidacji krzyżowej na żadnym etapie.
+
+> **Koszt obliczeń.** Każda próba to pięć dopasowań XGBoost zamiast jednego. Studium zapisuje się
+> w osobnej bazie `models/optuna_upadlosci_cv.db`, więc proces można przerwać i wznowić.
+> Domyślne `N_TRIALS_CV = 100` w notebooku jest punktem wyjścia, nie wartością docelową.
 
 ## Dane osobowe
 
