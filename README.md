@@ -126,16 +126,16 @@ Zbiór uczący i walidacyjny połączono i podzielono na 5 rozłącznych podzbio
 
 | Procedura | Oszacowanie ze strojenia | PR-AUC na teście | Odchylenie |
 |---|---|---|---|
-| Pojedynczy podział | 0,208, jeden zbiór, 46 zdarzeń | 0,032 | 0,185 |
-| Walidacja krzyżowa | 0,075 ± 0,024, 5 podzbiorów, 302 zdarzenia | 0,023 | 0,052 |
+| Pojedynczy podział | 0,208, jeden zbiór, 46 zdarzeń | 0,032 | 0,175 |
+| Walidacja krzyżowa | 0,090 ± 0,028, 5 podzbiorów, 302 zdarzenia | 0,033 | 0,057 |
 
-Model z walidacji krzyżowej nie osiąga wyższej trafności testowej; jego PR-AUC mieści się w przedziale ufności modelu z pojedynczego podziału [0,013; 0,047], czego przy 70 zdarzeniach testowych nie da się rozstrzygnąć. Zmianie uległo oszacowanie formułowane przed oceną na teście: jego odchylenie od wyniku testowego zmalało z 0,185 do 0,052.
+Model z walidacji krzyżowej nie osiąga wyższej trafności testowej; jego PR-AUC mieści się w przedziale ufności modelu z pojedynczego podziału [0,018; 0,062], czego przy 70 zdarzeniach testowych nie da się rozstrzygnąć. Zmianie uległo oszacowanie formułowane przed oceną na teście: jego odchylenie od wyniku testowego zmalało z 0,175 do 0,057.
 
-PR-AUC w poszczególnych iteracjach mieściło się w przedziale 0,047-0,113, co wskazuje na niestabilność tej miary przy kilkudziesięciu zdarzeniach.
+PR-AUC w poszczególnych iteracjach mieściło się w przedziale 0,061-0,132, co wskazuje na niestabilność tej miary przy kilkudziesięciu zdarzeniach.
 
-Próg przenoszony jest przez odsetek oznaczonych obserwacji, nie przez wartość bezwzględną: predykcje pochodzą z 5 modeli o różnych skalach. Wymagane 6,16% dało na zbiorze testowym czułość 0,944 przy wartości zadanej 0,90.
+Próg przenoszony jest przez odsetek oznaczonych obserwacji, nie przez wartość bezwzględną: predykcje pochodzą z 5 modeli o różnych skalach. Wymagane 6,78% dało na zbiorze testowym czułość 0,957 przy wartości zadanej 0,90.
 
-Przebieg objął 484 dopasowania modelu wobec 501 w strojeniu bez walidacji krzyżowej. Koszt obu procedur jest zbliżony; różni je rozkład nakładu: 500 konfiguracji ocenionych jednokrotnie wobec 100 ocenionych pięciokrotnie.
+Przebieg objął 2213 dopasowań modelu wobec 501 w strojeniu bez walidacji krzyżowej, czyli koszt 4,4 razy wyższy. Rozkład nakładu: 500 konfiguracji ocenionych jednokrotnie wobec 492 ocenianych na pięciu podzbiorach, z czego 154 przerwano po pierwszych podzbiorach przez pruner medianowy.
 
 ## Pozostałe wykresy
 
