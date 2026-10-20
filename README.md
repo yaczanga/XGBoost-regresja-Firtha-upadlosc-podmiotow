@@ -1,5 +1,7 @@
 # Predykcja upadłości przedsiębiorstw a status rodzinny
 
+![testy](https://github.com/yaczanga/XGBoost-regresja-Firtha-upadlosc-podmiotow/actions/workflows/testy.yml/badge.svg)
+
 Model przewidujący formalną upadłość polskich spółek na panelu 1 317 608 firmo-lat z bazy Orbis (2013-2020) osiąga na zbiorze testowym PR-AUC 0,032 przy ROC-AUC 0,980. Analiza wartości Shapleya wskazuje, że trafność bierze się z dostępności danych rejestrowych, a nie z treści wskaźników finansowych. Niezależnie od tego spółki rodzinne upadają w tym panelu 11,2 razy rzadziej niż nierodzinne, a różnica przeżywa kontrolę wielkości i zmianę metody estymacji.
 
 Główne ograniczenie: wnioskowanie o firmach rodzinnych opiera się na 10 zdarzeniach w tej grupie. Stąd regresja Firtha, profilowe przedziały ufności i test permutacyjny zamiast zwykłego logitu.
