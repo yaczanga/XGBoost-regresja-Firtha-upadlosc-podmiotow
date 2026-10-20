@@ -1,8 +1,8 @@
 """
 Testy gwarancji metodologicznych przygotowania danych.
 
-Kazdy test odpowiada jednemu twierdzeniu z rozdzialu metodologicznego pracy.
-Wszystkie dzialaja na panelu syntetycznym - patrz conftest.py.
+Kazdy test odpowiada jednemu twierdzeniu o konstrukcji zbioru, opisanemu
+w README. Wszystkie dzialaja na panelu syntetycznym - patrz conftest.py.
 """
 from __future__ import annotations
 

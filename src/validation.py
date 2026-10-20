@@ -27,26 +27,6 @@ def find_threshold(model: "xgb.XGBClassifier", X_val: np.ndarray, y_val: np.ndar
     return threshold
 
 
-def find_threshold_oof(y: np.ndarray, oof_scores: np.ndarray,
-                       target_recall: float) -> float:
-    """Prog dobrany na predykcjach out-of-fold z walidacji krzyzowej.
-
-    Przewaga nad find_threshold: prog wyznaczany jest na WSZYSTKICH zdarzeniach
-    zbioru uczacego, a nie na kilkudziesieciu z pojedynczego zbioru
-    walidacyjnego, przez co jest znacznie stabilniejszy.
-
-    UWAGA: predykcje out-of-fold pochodza z roznych modeli, a kazdy z nich ma
-    wlasna skale score'ow (inna liczba drzew, inne scale_pos_weight). Prog w
-    wartosciach bezwzglednych nie przenosi sie wiec wiernie na model koncowy.
-    Do przeniesienia progu sluzy para alarm_rate_from_oof /
-    threshold_from_alarm_rate, odporna na roznice skali.
-    """
-    threshold = threshold_from_scores(y, oof_scores, target_recall)
-    print(f"Prog z predykcji out-of-fold dla recall>={target_recall:.0%}: "
-          f"{threshold:.4f}  (na {int(y.sum())} zdarzeniach)")
-    return threshold
-
-
 def alarm_rate_from_oof(y: np.ndarray, oof_scores: np.ndarray,
                         target_recall: float) -> float:
     """Jaki odsetek firmo-lat trzeba oznaczyc alarmem, by zlapac target_recall zdarzen.

@@ -1,28 +1,11 @@
 """
 Walidacja krzyzowa z podzialem na poziomie firm.
 
-Motywacja. W podstawowym przebiegu badania jeden zbior walidacyjny pelni trzy
-funkcje naraz: wczesne zatrzymanie, wybor hiperparametrow i dobor progu
-decyzyjnego. Przy 46 zdarzeniach pozytywnych wybor najlepszego z 500 zestawow
-czesciowo dopasowuje sie do przypadkowych wlasciwosci tego zbioru, co widac po
-rozjezdzie PR-AUC: 0,208 na walidacji wobec 0,034 na tescie.
-
-Walidacja krzyzowa usrednia wynik po kilku rozlacznych podzialach, dzieki czemu
-oszacowanie jest stabilniejsze, a dodatkowo daje predykcje out-of-fold dla
-kazdej obserwacji zbioru uczacego - sluza one do doboru progu decyzyjnego na
-znacznie wiekszej liczbie zdarzen niz pojedynczy zbior walidacyjny.
-
-Dwa wymogi tych danych:
-  - podzial na poziomie FIRM (grupa = TIN), bo rozne lata tej samej spolki sa
-    skorelowane; przy podziale po wierszach model rozpoznawalby konkretne
-    podmioty zamiast ogolnych prawidlowosci,
-  - stratyfikacja po zmiennej celu, bo przy jednym zdarzeniu na 3541 firmo-lat
-    zwykly GroupKFold potrafi wygenerowac foldy o skrajnie roznej liczbie
-    zdarzen, co czyni srednia z foldow bezuzyteczna.
-
-Oba warunki spelnia StratifiedGroupKFold.
-
-Zbior testowy nie bierze udzialu w walidacji krzyzowej na zadnym etapie.
+Podzial idzie po firmach (grupa = TIN) i ze stratyfikacja po zmiennej celu, co
+razem spelnia StratifiedGroupKFold: rozne lata tej samej spolki sa skorelowane,
+a przy jednym zdarzeniu na 3540 firmo-lat zwykly GroupKFold daje foldy o
+skrajnie roznej liczbie zdarzen. Zbior testowy nie bierze udzialu w tej
+procedurze na zadnym etapie.
 """
 from __future__ import annotations
 
@@ -33,9 +16,7 @@ from sklearn.metrics import average_precision_score
 from sklearn.model_selection import StratifiedGroupKFold
 
 
-# ============================================================
 # 1. PODZIAL NA FOLDY
-# ============================================================
 
 def make_folds(y: np.ndarray, groups: np.ndarray, n_splits: int = 5,
                seed: int = 42) -> list[tuple[np.ndarray, np.ndarray]]:
@@ -68,9 +49,7 @@ def folds_report(y: np.ndarray, groups: np.ndarray,
           f"{bool((pokrycie == 1).all())}")
 
 
-# ============================================================
 # 2. OCENA ZESTAWU HIPERPARAMETROW NA FOLDACH
-# ============================================================
 
 FIXED = dict(
     objective='binary:logistic',
@@ -140,9 +119,7 @@ def cv_evaluate(params: dict, X: np.ndarray, y: np.ndarray,
     }
 
 
-# ============================================================
 # 3. STROJENIE HIPERPARAMETROW NA WALIDACJI KRZYZOWEJ
-# ============================================================
 
 SEARCH_SPACE = {
     'learning_rate':    ('float', 0.01, 0.3, True),

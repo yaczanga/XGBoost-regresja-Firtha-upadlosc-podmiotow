@@ -46,9 +46,10 @@ reports/*
 literatura/
 
 # ---------------------------------------------------------------
-# Praca dyplomowa - dane osobowe autora (imie, nazwisko, nr albumu)
+# Dokumenty - zawieraja dane osobowe autora
 # ---------------------------------------------------------------
-praca_magisterska.pdf
+*.pdf
+*.docx
 
 # ---------------------------------------------------------------
 # Archiwum - stare wersje, ich wyniki zawieraja dane firm

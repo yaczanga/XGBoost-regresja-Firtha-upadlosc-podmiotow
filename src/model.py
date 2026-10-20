@@ -1,8 +1,7 @@
-import pandas as pd
 import numpy as np
 import xgboost as xgb
 import optuna
-from sklearn.metrics import average_precision_score, precision_recall_curve, roc_curve, auc
+from sklearn.metrics import average_precision_score
 
 def train_model(X_train: np.ndarray, y_train: np.ndarray, X_val: np.ndarray, y_val: np.ndarray, n_trials: int, storage: str, study_name: str) -> xgb.XGBClassifier:
     

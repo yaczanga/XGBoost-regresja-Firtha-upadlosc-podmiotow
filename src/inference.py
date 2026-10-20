@@ -10,7 +10,6 @@ Zawiera:
   - hierarchical_hazard_logit    : hierarchiczny logit hazardu M1->M3
     (pooled logit, bledy standardowe klastrowane po firmie).
   - raw_rate_by_family           : surowa stopa upadlosci + test chi2.
-  - profile_by_family            : mediany cech wg typu firmy.
   - stratified_rates             : stopa upadlosci w warstwach (kompozycja).
   - nace_section                 : mapowanie dzialu NACE -> sekcja (litera).
 """
@@ -325,15 +324,6 @@ def raw_rate_by_family(df: pd.DataFrame, target: str = 'will_fail_next_year') ->
     denom = r.loc['Rodzinne (1)', 'stopa_upadlosci']
     ratio = (r.loc['Nierodzinne (0)', 'stopa_upadlosci'] / denom) if denom > 0 else np.inf
     return dict(table=r, chi2=float(chi2), p=float(pval), ratio=float(ratio))
-
-
-def profile_by_family(df: pd.DataFrame, profile_map: dict[str, str]) -> pd.DataFrame:
-    """Mediany wybranych cech wg typu firmy (cala proba)."""
-    cols = [c for c in profile_map if c in df.columns]
-    prof = df.groupby('family')[cols].median().T
-    prof.index = [profile_map[c] for c in cols]
-    prof.columns = ['Nierodzinne (0)', 'Rodzinne (1)']
-    return prof
 
 
 def stratified_rates(df: pd.DataFrame, by: str, target: str = 'will_fail_next_year',

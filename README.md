@@ -1,10 +1,8 @@
 # Predykcja upadłości przedsiębiorstw a status rodzinny
 
-Model przewidujący formalną upadłość polskich spółek na panelu 1 317 608 firmo-lat z bazy Orbis (2013-2020) osiąga na zbiorze testowym PR-AUC 0,032 przy ROC-AUC 0,980. Analiza wartości Shapleya wskazuje, że trafność bierze się z dostępności danych rejestrowych, a nie z treści wskaźników finansowych. Niezależnie od tego spółki rodzinne upadają w tym panelu około 11 razy rzadziej niż nierodzinne, a różnica przeżywa kontrolę wielkości i zmianę metody estymacji.
+Model przewidujący formalną upadłość polskich spółek na panelu 1 317 608 firmo-lat z bazy Orbis (2013-2020) osiąga na zbiorze testowym PR-AUC 0,032 przy ROC-AUC 0,980. Analiza wartości Shapleya wskazuje, że trafność bierze się z dostępności danych rejestrowych, a nie z treści wskaźników finansowych. Niezależnie od tego spółki rodzinne upadają w tym panelu 11,2 razy rzadziej niż nierodzinne, a różnica przeżywa kontrolę wielkości i zmianę metody estymacji.
 
 Główne ograniczenie: wnioskowanie o firmach rodzinnych opiera się na 10 zdarzeniach w tej grupie. Stąd regresja Firtha, profilowe przedziały ufności i test permutacyjny zamiast zwykłego logitu.
-
-Kod pochodzi z pracy magisterskiej napisanej na Wydziale Nauk Ekonomicznych Uniwersytetu Warszawskiego, sierpień 2026.
 
 ## Hipotezy
 
@@ -20,12 +18,12 @@ Trafność modelu jest bardzo niska. PR-AUC na zbiorze testowym wynosi 0,032, pr
 
 | Miara | Wartość | Źródło |
 |---|---|---|
-| PR-AUC, oszacowanie punktowe | 0,032 | komórka 19 notebooka |
-| PR-AUC, mediana bootstrapu | 0,034 [0,018; 0,062] | komórka 24 notebooka |
-| ROC-AUC | 0,980 | komórka 19 notebooka |
+| PR-AUC, oszacowanie punktowe | 0,032 | sekcja 9 notebooka |
+| PR-AUC, mediana bootstrapu | 0,034 [0,018; 0,062] | sekcja 10 notebooka |
+| ROC-AUC | 0,980 | sekcja 9 notebooka |
 | PR-AUC na walidacji, najlepsza z 500 prób | 0,208 | `models/optuna_upadlosci.db` |
-| Precyzja przy czułości 0,90 | 0,004 | komórka 19 notebooka |
-| Przewaga nad losowym uporządkowaniem | ok. 121x przy prewalencji 0,000265 | komórka 24 notebooka |
+| Precyzja przy czułości 0,90 | 0,004 | sekcja 9 notebooka |
+| Przewaga nad losowym uporządkowaniem | ok. 121x przy prewalencji 0,000265 | sekcja 10 notebooka |
 
 Rozbieżność między PR-AUC 0,032 a ROC-AUC 0,980 jest objawem skrajnego niezbalansowania klas. Sam ROC-AUC prowadziłby do wniosku o modelu niemal doskonałym (Saito i Rehmsmeier, 2015).
 
@@ -49,7 +47,7 @@ Wartości pochodzą z osobnych modeli o jednakowych hiperparametrach (`signal_so
 
 ![Rozkład wpływu cech na ryzyko, wartości SHAP: zmienna SHAREHOLDERS dominuje, punkty z brakiem wartości leżą po stronie podwyższonego ryzyka](reports/figures/11_shap_rozklad_wplywu.png)
 
-Dominującą cechą jest `SHAREHOLDERS`, przy czym decyduje nie jej poziom, lecz dostępność: obserwacje z brakiem wartości podnoszą ryzyko, obserwacje z wartością obniżają je silniej niż jakikolwiek wskaźnik finansowy. Wszystkie 372 zdarzenia pochodzą z podpróby o brakującej informacji właścicielskiej (praca, rozdz. 3.3), więc model rozpoznaje przede wszystkim, czy podmiot jest aktywnie raportowany.
+Dominującą cechą jest `SHAREHOLDERS`, przy czym decyduje nie jej poziom, lecz dostępność: obserwacje z brakiem wartości podnoszą ryzyko, a obserwacje z wartością obniżają je silniej niż jakikolwiek wskaźnik finansowy. Model rozpoznaje więc przede wszystkim, czy podmiot jest aktywnie raportowany. Brak informacji właścicielskiej nie rozkłada się przy tym równo między grupami: obejmuje 24,0% obserwacji spółek nierodzinnych wobec 14,6% rodzinnych.
 
 To informacja administracyjna, nie ekonomiczna. Klasyczne wskaźniki płynności, zadłużenia i rentowności plasują się nisko.
 
@@ -60,20 +58,20 @@ To informacja administracyjna, nie ekonomiczna. Klasyczne wskaźniki płynności
 | Nierodzinne | 0,0360% | 362 | 1 005 543 |
 | Rodzinne | 0,0032% | 10 | 312 065 |
 
-Przy tempie nierodzinnych należałoby oczekiwać ok. 110 upadłości rodzinnych zamiast 10. Przewaga utrzymuje się w każdym kwartylu wielkości, więc nie jest artefaktem tego, że spółki rodzinne są w tej próbie większe.
+Przy tempie nierodzinnych należałoby oczekiwać ok. 112 upadłości rodzinnych zamiast 10. Przewaga utrzymuje się w każdym kwartylu wielkości, więc nie jest artefaktem tego, że spółki rodzinne są w tej próbie większe.
 
 ![Stopa upadłości według kwartyla aktywów i typu firmy: słupki rodzinne niższe w każdym z czterech kwartyli](reports/figures/09_stopa_upadlosci_wg_wielkosci_i_typu.png)
 
 W kwartylu najmniejszych firm jest to 0,064% wobec 0,007%, w największych 0,021% wobec 0,003%, a w drugim kwartylu wśród spółek rodzinnych nie odnotowano ani jednej upadłości.
 
-| Model | Współczynnik `family` | Błąd std. | Iloraz szans |
+| Model | Iloraz szans `family` | 95% przedział ufności | p |
 |---|---|---|---|
-| M1, bez kontroli | -2,42\*\*\* | (0,32) | 0,089 |
-| M2, z kontrolą rozmiaru, stażu i flagi aktywów | -2,50\*\*\* | (0,32) | 0,082 |
-| M3, z efektami stałymi sektora i roku | -3,54\*\*\* | (0,46) | 0,029 |
-| Firth, specyfikacja M2 | -2,45\*\*\* | (0,31) | 0,086, PL CI [0,044; 0,151] |
+| M1, bez kontroli | 0,089 | [0,048; 0,167] | <0,001 |
+| M2, z kontrolą rozmiaru, stażu i flagi aktywów | 0,082 | [0,044; 0,153] | <0,001 |
+| M3, z efektami stałymi sektora i roku | 0,029 | [0,012; 0,072] | <0,001 |
+| Firth, specyfikacja M2 | 0,086 | [0,044; 0,151], profilowy | <0,001 |
 
-\*\*\* istotność na poziomie 0,001. Oszacowanie M3 jest numerycznie niestabilne i nie stanowi podstawy wnioskowania.
+Oszacowanie M3 jest numerycznie niestabilne i nie stanowi podstawy wnioskowania.
 
 Kontrola wielkości nie osłabia efektu, co przemawia przeciwko wyjaśnieniu różnicy samym rozmiarem spółek. Test permutacyjny klastrowany po firmie nie wygenerował w 500 przetasowaniach efektu co najmniej tak silnego jak zaobserwowany; empiryczna wartość p wynosi 0,002.
 
@@ -88,11 +86,11 @@ Baza Orbis, sprawozdania finansowe polskich spółek za lata 2013-2020. Jednostk
 | Panel wyjściowy | 2 723 508 firmo-lat |
 | Po filtrze braków, powyżej 12 z 17 wskaźników | 1 317 608 firmo-lat, 262 609 podmiotów |
 | Zdarzenia | 372 |
-| Częstość zdarzenia | 1 na 3541 firmo-lat, czyli 0,028% |
+| Częstość zdarzenia | 1 na 3540 firmo-lat, czyli 0,028% |
 
 Filtr usunął 51,6% panelu, tracąc przy tym 2 obserwacje pozytywne. Ta asymetria wskazuje, że braki nie są losowe i same niosą informację o statusie podmiotu.
 
-Dane nie są częścią repozytorium. Zbiór Orbis jest licencjonowany i nie podlega redystrybucji; ścieżkę do własnego wyciągu ustawia się w `.env` według wzoru w `.env.example`.
+Dane nie są częścią repozytorium. Zbiór Orbis jest licencjonowany i nie podlega redystrybucji; własny wyciąg umieszcza się w `data/raw/dane.dta`, skąd czyta go notebook.
 
 ## Metoda
 
@@ -114,13 +112,11 @@ Model predykcyjny to XGBoost z ważeniem klasy mniejszościowej, strojony metod�
 
 Wnioskowanie opiera się na zbieżności trzech procedur: logitu hazardu z błędami standardowymi klastrowanymi po firmie, regresji Firtha z penalizacją Jeffreysa oraz testu permutacyjnego klastrowanego po firmie. Regresja Firtha i test permutacyjny są zaimplementowane bez zależności zewnętrznych w [`src/inference.py`](src/inference.py).
 
-Pełne uzasadnienia metodologiczne znajdują się w pracy, rozdz. 3.
-
 ## Walidacja krzyżowa
 
-Rozszerzenie wykraczające poza zakres pracy, zaimplementowane w [`src/cross_validation.py`](src/cross_validation.py) i w sekcji 9b notebooka.
+Zaimplementowana w [`src/cross_validation.py`](src/cross_validation.py) i w sekcji 9b notebooka.
 
-W podstawowym przebiegu jeden zbiór walidacyjny służy jednocześnie wczesnemu zatrzymaniu, wyborowi hiperparametrów i doborowi progu, przy 46 zdarzeniach. Praca wskazuje walidację krzyżową jako rozwiązanie i uzasadnia rezygnację z niej czasem obliczeń (rozdz. 3.6.4).
+W podstawowym przebiegu jeden zbiór walidacyjny służy jednocześnie wczesnemu zatrzymaniu, wyborowi hiperparametrów i doborowi progu, przy 46 zdarzeniach. Walidacja krzyżowa rozdziela te zadania na 5 podzbiorów i 302 zdarzenia, kosztem dłuższych obliczeń.
 
 Zbiór uczący i walidacyjny połączono i podzielono na 5 rozłącznych podzbiorów, na poziomie podmiotów i ze stratyfikacją po zmiennej celu. Podział wyznaczono jednokrotnie i zastosowano w każdej próbie. Zbiór testowy nie uczestniczy w tej procedurze.
 
@@ -133,9 +129,9 @@ Model z walidacji krzyżowej nie osiąga wyższej trafności testowej; jego PR-A
 
 PR-AUC w poszczególnych iteracjach mieściło się w przedziale 0,061-0,132, co wskazuje na niestabilność tej miary przy kilkudziesięciu zdarzeniach.
 
-Próg przenoszony jest przez odsetek oznaczonych obserwacji, nie przez wartość bezwzględną: predykcje pochodzą z 5 modeli o różnych skalach. Wymagane 6,78% dało na zbiorze testowym czułość 0,957 przy wartości zadanej 0,90.
+Próg przenoszony jest przez odsetek oznaczonych obserwacji, nie przez wartość bezwzględną: predykcje pochodzą z 5 modeli o różnych skalach. Wymagany odsetek wyniósł 6,78%, a czułość na zbiorze testowym 0,959 w medianie bootstrapu klastrowanego po firmie, przy wartości zadanej 0,90.
 
-Przebieg objął 2213 dopasowań modelu wobec 501 w strojeniu bez walidacji krzyżowej, czyli koszt 4,4 razy wyższy. Rozkład nakładu: 500 konfiguracji ocenionych jednokrotnie wobec 492 ocenianych na pięciu podzbiorach, z czego 154 przerwano po pierwszych podzbiorach przez pruner medianowy.
+Przebieg objął 2215 dopasowań modelu na podzbiorach wobec 500 w strojeniu bez walidacji krzyżowej, czyli koszt 4,4 razy wyższy. Z 492 ocenianych konfiguracji 338 przeszło wszystkie 5 podzbiorów, a 154 przerwał pruner medianowy po pierwszych z nich. Baza zawiera ponadto 2 konfiguracje zakończone błędem i 1 przerwaną w trakcie; żadna z nich nie weszła do zestawienia.
 
 ## Pozostałe wykresy
 
@@ -157,7 +153,6 @@ Komplet w [`reports/figures/`](reports/figures/); pliki odtwarzają się przy ka
 ## Struktura projektu
 
 ```
-magisterka/
 ├── data/raw/                   dane źródłowe, poza repozytorium
 ├── notebooks/
 │   └── 01_upadlosc_a_status_rodzinny.ipynb
@@ -168,9 +163,10 @@ magisterka/
 │   ├── cross_validation.py     walidacja krzyżowa na poziomie podmiotów
 │   ├── validation.py           próg decyzyjny, bootstrap klastrowany, test źródła sygnału
 │   ├── inference.py            Firth, logit hazardu, test permutacyjny, sekcje NACE
+│   ├── plot_style.py           tokeny barw, typografia i ustawienia matplotlib
 │   └── visualisation.py        wykresy wraz z zapisem do plików
 ├── models/                     model i bazy prób strojenia
-├── reports/figures/            12 wykresów PNG
+├── reports/figures/            14 wykresów PNG
 ├── tests/                      29 testów gwarancji metodologicznych
 └── .github/workflows/          uruchomienie testów przy każdym push
 ```
@@ -241,4 +237,4 @@ Lista firm zagrożonych (`reports/lista_zagrozonych_firm_xgboost.csv`) zawiera N
 
 ## Autor
 
-Jan Dziuba, Wydział Nauk Ekonomicznych Uniwersytetu Warszawskiego. Praca pod kierunkiem dr Anety Dzik-Walczak, Katedra Statystyki i Ekonometrii.
+Jan Dziuba. Projekt powstał jako praca magisterska, 2026-08.

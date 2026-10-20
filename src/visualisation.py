@@ -16,10 +16,13 @@ Zapis do plikow. Domyslnie wykresy tylko sie wyswietlaja. Po wywolaniu
 set_figures_dir(sciezka) kazdy wykres jest dodatkowo zapisywany do pliku PNG
 pod nazwa podana w argumencie 'name'. Sluzy to do odtworzenia zawartosci
 reports/figures/, ktora trafia do repozytorium i do README.
+
+Wyjatek. Rysunki 10-12 (wartosci SHAP) powstaja bezposrednio w notebooku, przez
+wywolanie biblioteki shap, i jako jedyne nie przechodza przez system barw tego
+modulu - maja domyslna palete shap i opisy osi po angielsku.
 """
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -281,68 +284,5 @@ def plot_risk_by_family(scores_df: pd.DataFrame,
     ax.set_xlabel('Typ firmy')
     ax.set_ylabel('Ocena ryzyka (XGBoost, nieskalibrowana)')
     style.decimal_comma(ax, 'y', 2)
-    plt.tight_layout()
-    _finish(name)
-
-
-# ==========================================================================
-# Wykresy bibliotek zewnetrznych (SHAP)
-# ==========================================================================
-# Biblioteka shap rysuje wlasne figury i nie wie nic o systemie projektu.
-# Ponizsze funkcje sa jedynym dopuszczonym sposobem jej wywolania: przykrywaja
-# palete, podaja mape barw jawnie (podstawienie pod shap.plots.colors nie
-# zadziala - patrz plot_style.apply_shap_style) i dopisuja polski tytul.
-
-def plot_shap_bar(shap_values, X, feature_names, max_display: int = 20,
-                  name: str | None = '10_shap_sredni_wplyw_cech'):
-    """Sredni bezwzgledny wplyw zmiennych na wynik modelu."""
-    import shap
-
-    style.apply_shap_style()
-    plt.figure(figsize=(10, 8))
-    shap.summary_plot(shap_values, X, feature_names=list(feature_names),
-                      plot_type='bar', max_display=max_display, show=False,
-                      color=style.SERIES_1)
-    plt.title('Średni wpływ zmiennych na wynik modelu')
-    plt.tight_layout()
-    _finish(name)
-
-
-def plot_shap_beeswarm(shap_values, X, feature_names, max_display: int = 20,
-                       name: str | None = '11_shap_rozklad_wplywu'):
-    """Rozklad wplywu zmiennych - jeden punkt na obserwacje."""
-    import shap
-
-    style.apply_shap_style()
-    plt.figure(figsize=(10, 8))
-    # cmap i opis paska podajemy jawnie: summary_plot wiaze obie wartosci
-    # domyslne przy imporcie modulu, wiec podmiana globalna ich nie dosiega.
-    shap.summary_plot(shap_values, X, feature_names=list(feature_names),
-                      max_display=max_display, show=False,
-                      cmap=style.DIVERGING_CMAP,
-                      color_bar_label='Wartość zmiennej')
-    plt.title('Rozkład wpływu zmiennych na ryzyko upadłości')
-    plt.tight_layout()
-    _finish(name)
-
-
-def plot_shap_waterfall(shap_values, explainer, X, idx: int, feature_names,
-                        max_display: int = 15,
-                        name: str | None = '12_shap_waterfall_pojedyncza_firma'):
-    """Rozklad wyniku modelu dla pojedynczej obserwacji."""
-    import shap
-
-    style.apply_shap_style()
-    explanation = shap.Explanation(values=shap_values.values[idx],
-                                   base_values=explainer.expected_value,
-                                   data=X[idx], feature_names=list(feature_names))
-    shap.plots.waterfall(explanation, max_display=max_display, show=False)
-    # "N other features" shap sklada f-stringiem w kodzie, wiec slownik labels
-    # go nie dosiega - podmieniamy etykiete po narysowaniu.
-    ax = plt.gca()
-    ax.set_yticklabels([
-        re.sub(r'^(\d+) other features$', r'pozostałe zmienne (\1)', t.get_text())
-        for t in ax.get_yticklabels()])
-    plt.title('Rozkład wyniku modelu dla pojedynczej firmy')
     plt.tight_layout()
     _finish(name)
